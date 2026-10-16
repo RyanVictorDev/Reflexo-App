@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reflexo/domain/difficulty.dart';
 import 'package:reflexo/domain/lane.dart';
 import 'package:reflexo/domain/spawn_planner.dart';
 import 'package:reflexo/game/config/game_config.dart';
@@ -97,81 +98,84 @@ void main() {
     );
   });
 
-  test('uma partida simulada sempre deixa uma faixa evitável', () {
-    final director = SpawnDirector();
-    final obstacles = <TrackedObstacle>[];
-    var elapsed = 0.0;
-    var cooldown = 0.7;
-    const dt = 1 / 60;
-    const spawnY = -half - 4;
-    var spawned = 0;
-    var left = 0;
-    var right = 0;
+  for (final mode in Difficulty.catalog) {
+    test('uma partida no ${mode.name} sempre deixa uma faixa evitável', () {
+      final director = SpawnDirector();
+      final obstacles = <TrackedObstacle>[];
+      var elapsed = 0.0;
+      var cooldown = 0.7;
+      const dt = 1 / 60;
+      const spawnY = -half - 4;
+      var spawned = 0;
+      var left = 0;
+      var right = 0;
 
-    while (elapsed < 90) {
-      final speed = GameConfig.scrollSpeedAt(elapsed);
-      elapsed += dt;
-      cooldown -= dt;
-      if (cooldown <= 0) {
-        final spacingSpeed = GameConfig.scrollSpeedAt(
-          elapsed + GameConfig.spawnLookAheadSeconds,
-        );
-        final lane = director.attempt(
-          spawnY: spawnY,
-          halfExtent: half,
-          reactionDistance: GameConfig.reactionDistance(spacingSpeed),
-          minSameLaneGap: GameConfig.minSameLaneGap,
-          existing: obstacles,
-        );
-        if (lane == null) {
-          cooldown = GameConfig.spawnRetrySeconds;
-        } else {
-          obstacles.add(
-            TrackedObstacle(lane: lane, centerY: spawnY, halfExtent: half),
+      while (elapsed < 90) {
+        final speed = mode.scrollSpeedAt(elapsed);
+        elapsed += dt;
+        cooldown -= dt;
+        if (cooldown <= 0) {
+          final spacingSpeed = mode.scrollSpeedAt(
+            elapsed + GameConfig.spawnLookAheadSeconds,
           );
-          cooldown = GameConfig.spawnIntervalAt(elapsed);
-          spawned += 1;
-          if (lane == Lane.left) {
-            left += 1;
+          final lane = director.attempt(
+            spawnY: spawnY,
+            halfExtent: half,
+            reactionDistance: GameConfig.reactionDistance(spacingSpeed),
+            minSameLaneGap: GameConfig.minSameLaneGap,
+            existing: obstacles,
+          );
+          if (lane == null) {
+            cooldown = GameConfig.spawnRetrySeconds;
           } else {
-            right += 1;
+            obstacles.add(
+              TrackedObstacle(lane: lane, centerY: spawnY, halfExtent: half),
+            );
+            cooldown = mode.spawnIntervalAt(elapsed);
+            spawned += 1;
+            if (lane == Lane.left) {
+              left += 1;
+            } else {
+              right += 1;
+            }
           }
         }
-      }
 
-      for (var i = 0; i < obstacles.length; i++) {
-        final obstacle = obstacles[i];
-        obstacles[i] = TrackedObstacle(
-          lane: obstacle.lane,
-          centerY: obstacle.centerY + speed * dt,
-          halfExtent: obstacle.halfExtent,
-        );
-      }
-      obstacles.removeWhere((obstacle) => obstacle.centerY > 3000);
-
-      final reaction = GameConfig.reactionDistance(
-        GameConfig.scrollSpeedAt(elapsed),
-      );
-      for (var i = 0; i < obstacles.length; i++) {
-        for (var j = i + 1; j < obstacles.length; j++) {
-          final a = obstacles[i];
-          final b = obstacles[j];
-          if (a.lane == b.lane) {
-            continue;
-          }
-          final edgeGap =
-              (a.centerY - b.centerY).abs() - a.halfExtent - b.halfExtent;
-          expect(
-            edgeGap,
-            greaterThanOrEqualTo(reaction - 0.05),
-            reason: 'em ${elapsed.toStringAsFixed(2)}s a reação era $reaction',
+        for (var i = 0; i < obstacles.length; i++) {
+          final obstacle = obstacles[i];
+          obstacles[i] = TrackedObstacle(
+            lane: obstacle.lane,
+            centerY: obstacle.centerY + speed * dt,
+            halfExtent: obstacle.halfExtent,
           );
         }
-      }
-    }
+        obstacles.removeWhere((obstacle) => obstacle.centerY > 3000);
 
-    expect(spawned, greaterThan(20));
-    expect(left, greaterThan(0));
-    expect(right, greaterThan(0));
-  });
+        final reaction = GameConfig.reactionDistance(
+          mode.scrollSpeedAt(elapsed),
+        );
+        for (var i = 0; i < obstacles.length; i++) {
+          for (var j = i + 1; j < obstacles.length; j++) {
+            final a = obstacles[i];
+            final b = obstacles[j];
+            if (a.lane == b.lane) {
+              continue;
+            }
+            final edgeGap =
+                (a.centerY - b.centerY).abs() - a.halfExtent - b.halfExtent;
+            expect(
+              edgeGap,
+              greaterThanOrEqualTo(reaction - 0.05),
+              reason:
+                  '${mode.name} em ${elapsed.toStringAsFixed(2)}s, reação $reaction',
+            );
+          }
+        }
+      }
+
+      expect(spawned, greaterThan(20));
+      expect(left, greaterThan(0));
+      expect(right, greaterThan(0));
+    });
+  }
 }

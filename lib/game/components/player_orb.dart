@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/collisions.dart';
@@ -11,6 +12,7 @@ import 'package:reflexo/game/components/energy_orb.dart';
 import 'package:reflexo/game/components/obstacle_block.dart';
 import 'package:reflexo/game/config/game_config.dart';
 import 'package:reflexo/game/reflexo_game.dart';
+import 'package:reflexo/game/trail/flame_trail.dart';
 
 class PlayerOrb extends PositionComponent
     with CollisionCallbacks, HasGameReference<ReflexoGame> {
@@ -22,16 +24,12 @@ class PlayerOrb extends PositionComponent
 
   bool get isSwitching => _switchingTo != null;
 
-  final List<Vector2> _trail = List.generate(6, (_) => Vector2.zero());
+  final List<Vector2> _trail = List.generate(18, (_) => Vector2.zero());
+  double _flameTime = 0;
   double _pulse = 0;
   final Paint _glowPaint = Paint();
   final Paint _midPaint = Paint();
   final Paint _corePaint = Paint();
-  final Paint _trailPaint = Paint();
-  final Paint _shadowPaint = Paint()
-    ..color = const Color(0xAA061018)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
-  Color _trailColor = GameConfig.playerMid;
 
   void pulse() {
     _pulse = 1;
@@ -54,7 +52,6 @@ class PlayerOrb extends PositionComponent
     _glowPaint.color = style.glow;
     _midPaint.color = style.mid;
     _corePaint.color = style.core;
-    _trailColor = style.mid;
   }
 
   void switchLane() {
@@ -91,10 +88,13 @@ class PlayerOrb extends PositionComponent
     if (_pulse > 0) {
       _pulse = (_pulse - dt * 3.4).clamp(0.0, 1.0);
     }
-    for (var i = _trail.length - 1; i > 0; i--) {
-      _trail[i].setFrom(_trail[i - 1]);
-    }
     _trail[0].setFrom(position);
+    final follow = 1 - exp(-dt * 16);
+    for (var i = 1; i < _trail.length; i++) {
+      _trail[i].x += (_trail[i - 1].x - _trail[i].x) * follow;
+      _trail[i].y += (_trail[i - 1].y - _trail[i].y) * follow;
+    }
+    _flameTime += dt;
     super.update(dt);
   }
 
@@ -102,25 +102,15 @@ class PlayerOrb extends PositionComponent
   void render(Canvas canvas) {
     final center = Offset(size.x / 2, size.y / 2);
     final radius = size.x / 2 * (1 + _pulse * 0.22);
-    final foot = Offset(center.dx, center.dy + radius * 1.45);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: foot,
-        width: radius * 2.2,
-        height: radius * 0.62,
-      ),
-      _shadowPaint,
+    FlameTrail.paint(
+      canvas: canvas,
+      origin: Offset(center.dx, center.dy + radius * 0.78),
+      style: game.trail,
+      ball: game.style,
+      time: _flameTime,
+      stretch: (game.scrollSpeed / 280).clamp(0.85, 1.75),
+      historyX: [for (final point in _trail) point.x - position.x],
     );
-    for (var i = _trail.length - 1; i >= 1; i--) {
-      final local = _trail[i] - position + Vector2(center.dx, center.dy);
-      final fade = 1 - i / _trail.length;
-      _trailPaint.color = _trailColor.withValues(alpha: 0.16 * fade);
-      canvas.drawCircle(
-        Offset(local.x, local.y),
-        radius * (0.85 - i * 0.08),
-        _trailPaint,
-      );
-    }
     canvas.drawCircle(center, radius * 1.55, _glowPaint);
     canvas.drawCircle(center, radius * 0.95, _midPaint);
     canvas.drawCircle(center, radius * 0.5, _corePaint);

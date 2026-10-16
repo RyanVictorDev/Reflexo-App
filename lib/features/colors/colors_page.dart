@@ -45,42 +45,40 @@ class _ColorsPageState extends State<ColorsPage> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    return Scaffold(
-      body: CenteredMenu(
-        children: [
-          Text(
-            'Cores da bola',
-            textAlign: TextAlign.center,
-            style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Moedas ${_profile.coins}',
-            textAlign: TextAlign.center,
-            style: text.titleMedium,
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              for (final style in BallStyle.catalog)
-                _ColorChoice(
-                  style: style,
-                  owned: _profile.owns(style.id),
-                  selected: _profile.selectedColorId == style.id,
-                  onTap: () => _choose(style),
-                ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Voltar'),
-          ),
-        ],
-      ),
+    return CenteredMenu(
+      children: [
+        Text(
+          'Cores da bola',
+          textAlign: TextAlign.center,
+          style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Moedas ${_profile.coins}',
+          textAlign: TextAlign.center,
+          style: text.titleMedium,
+        ),
+        const SizedBox(height: 24),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            for (final style in BallStyle.catalog)
+              _ColorChoice(
+                style: style,
+                owned: _profile.owns(style.id),
+                selected: _profile.selectedColorId == style.id,
+                onTap: () => _choose(style),
+              ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Voltar'),
+        ),
+      ],
     );
   }
 }

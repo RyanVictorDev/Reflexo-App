@@ -37,13 +37,19 @@ class _ReflexoAppState extends State<ReflexoApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final audio = AudioController.instance;
-    if (state == AppLifecycleState.resumed) {
-      if (audio.musicOn) {
-        audio.startMusic();
-      }
-      return;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (audio.musicOn) {
+          audio.startMusic();
+        }
+        return;
+      case AppLifecycleState.inactive:
+        return;
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        audio.pauseMusic();
     }
-    audio.pauseMusic();
   }
 
   @override

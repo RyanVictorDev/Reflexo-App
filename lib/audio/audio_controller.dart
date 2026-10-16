@@ -39,13 +39,13 @@ class AudioController {
       final music = AudioPlayer();
       await music.setAudioContext(_musicContext);
       await music.setReleaseMode(ReleaseMode.loop);
-      await music.setVolume(0.5);
+      await music.setVolume(0.9);
       _music = music;
       for (var i = 0; i < 4; i++) {
         final effect = AudioPlayer();
         await effect.setAudioContext(_effectContext);
         await effect.setReleaseMode(ReleaseMode.stop);
-        await effect.setVolume(0.7);
+        await effect.setVolume(1);
         _effects.add(effect);
       }
       _ready = true;
@@ -59,12 +59,11 @@ class AudioController {
       return;
     }
     try {
-      if (_musicStarted) {
-        await _music!.resume();
-        return;
+      if (!_musicStarted) {
+        await _music!.play(AssetSource('audio/music.wav'));
+        _musicStarted = true;
       }
-      await _music!.play(AssetSource('audio/music.wav'));
-      _musicStarted = true;
+      await _music!.resume();
     } catch (_) {}
   }
 
@@ -102,8 +101,7 @@ class AudioController {
     final player = _effects[_effectCursor];
     _effectCursor = (_effectCursor + 1) % _effects.length;
     try {
-      await player.stop();
-      await player.play(AssetSource('audio/$name.wav'));
+      await player.play(AssetSource('audio/$name.wav'), ctx: _effectContext);
     } catch (_) {}
   }
 }

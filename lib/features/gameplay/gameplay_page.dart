@@ -18,21 +18,29 @@ class GameplayPage extends StatefulWidget {
 class _GameplayPageState extends State<GameplayPage>
     with WidgetsBindingObserver {
   late final ReflexoGame _game;
+  var _ready = false;
+  var _resultSent = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _game = ReflexoGame(onFinished: _openResults);
-    _loadStyle();
+    _game = ReflexoGame(onFinished: _openResults)..pauseEngine();
+    _loadProfile();
   }
 
-  Future<void> _loadStyle() async {
+  Future<void> _loadProfile() async {
     final profile = await PlayerRepository.instance.load();
     if (!mounted) {
       return;
     }
     _game.applyStyle(profile.style);
+    _game.applyTrail(profile.trail);
+    _game.applyDifficulty(profile.difficulty);
+    _ready = true;
+    if (_game.session.status == GameStatus.playing) {
+      _game.resumeEngine();
+    }
   }
 
   @override
@@ -43,11 +51,15 @@ class _GameplayPageState extends State<GameplayPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_ready) {
+      return;
+    }
     switch (state) {
       case AppLifecycleState.resumed:
         if (_game.session.status == GameStatus.playing) {
           _game.resumeEngine();
         }
+        return;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
@@ -57,6 +69,10 @@ class _GameplayPageState extends State<GameplayPage>
   }
 
   void _openResults(GameResult result) {
+    if (_resultSent) {
+      return;
+    }
+    _resultSent = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) {
         return;
@@ -116,6 +132,29 @@ class _Hud extends StatelessWidget {
                 },
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          ValueListenableBuilder<HudSnapshot>(
+            valueListenable: hud,
+            builder: (context, snapshot, _) {
+              final intensity = snapshot.intensity.clamp(0.0, 1.0);
+              return Semantics(
+                label: 'Ritmo ${(intensity * 100).round()} por cento',
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: intensity,
+                    minHeight: 4,
+                    backgroundColor: const Color(0x33FFFFFF),
+                    color: Color.lerp(
+                      const Color(0xFF8AF0FF),
+                      const Color(0xFFFF6B4A),
+                      intensity,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
           const Spacer(),
           ValueListenableBuilder<HudSnapshot>(

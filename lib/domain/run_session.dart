@@ -3,9 +3,13 @@ import 'package:reflexo/domain/game_status.dart';
 import 'package:reflexo/domain/score_calculator.dart';
 
 class RunSession {
-  RunSession({required this._calculator});
+  RunSession({
+    required ScoreCalculator calculator,
+    this.difficultyId = 'normal',
+  }) : _calculator = calculator;
 
   final ScoreCalculator _calculator;
+  String difficultyId;
 
   GameStatus status = GameStatus.playing;
   double elapsedSeconds = 0;
@@ -41,6 +45,7 @@ class RunSession {
       score: currentScore,
       elapsedSeconds: elapsedSeconds,
       orbsCollected: orbsCollected,
+      difficultyId: difficultyId,
     );
     return result;
   }

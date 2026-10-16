@@ -8,6 +8,8 @@ import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
 import 'package:reflexo/audio/audio_controller.dart';
 import 'package:reflexo/domain/ball_style.dart';
+import 'package:reflexo/domain/trail_style.dart';
+import 'package:reflexo/domain/difficulty.dart';
 import 'package:reflexo/domain/game_result.dart';
 import 'package:reflexo/domain/game_status.dart';
 import 'package:reflexo/domain/lane.dart';
@@ -21,31 +23,49 @@ import 'package:reflexo/game/config/game_config.dart';
 import 'package:reflexo/game/effects/fx.dart';
 
 class HudSnapshot {
-  const HudSnapshot({required this.score, required this.elapsedSeconds});
+  const HudSnapshot({
+    required this.score,
+    required this.elapsedSeconds,
+    required this.intensity,
+  });
 
   final int score;
   final double elapsedSeconds;
+  final double intensity;
 }
 
 class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
-  ReflexoGame({BallStyle? style, Random? random, this.onFinished})
-    : style = style ?? BallStyle.catalog.first,
-      _random = random ?? Random(),
-      session = RunSession(calculator: GameConfig.scoreCalculator);
+  ReflexoGame({
+    BallStyle? style,
+    TrailStyle? trail,
+    Difficulty? difficulty,
+    Random? random,
+    this.onFinished,
+  }) : style = style ?? BallStyle.catalog.first,
+       trail = trail ?? TrailStyle.catalog.first,
+       difficulty = difficulty ?? Difficulty.normal,
+       _random = random ?? Random(),
+       session = RunSession(
+         calculator: GameConfig.scoreCalculator,
+         difficultyId: (difficulty ?? Difficulty.normal).id,
+       ),
+       scrollSpeed = (difficulty ?? Difficulty.normal).initialSpeed;
 
   BallStyle style;
+  TrailStyle trail;
+  Difficulty difficulty;
 
   final void Function(GameResult result)? onFinished;
   final Random _random;
   final RunSession session;
   final SpawnDirector spawnDirector = SpawnDirector();
   final ValueNotifier<HudSnapshot> hud = ValueNotifier(
-    const HudSnapshot(score: 0, elapsedSeconds: 0),
+    const HudSnapshot(score: 0, elapsedSeconds: 0, intensity: 0),
   );
 
   late final PlayerOrb player = PlayerOrb();
 
-  double scrollSpeed = GameConfig.initialScrollSpeed;
+  double scrollSpeed;
   double _spawnCooldown = 0.7;
   bool _finishSent = false;
   double? _deathRemaining;
@@ -57,6 +77,18 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     style = value;
     if (player.isMounted) {
       player.applyStyle(value);
+    }
+  }
+
+  void applyTrail(TrailStyle value) {
+    trail = value;
+  }
+
+  void applyDifficulty(Difficulty value) {
+    difficulty = value;
+    session.difficultyId = value.id;
+    if (session.elapsedSeconds == 0) {
+      scrollSpeed = value.initialSpeed;
     }
   }
 
@@ -93,7 +125,7 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     } else if (session.status == GameStatus.playing &&
         size.x > 1 &&
         size.y > 1) {
-      scrollSpeed = GameConfig.scrollSpeedAt(session.elapsedSeconds);
+      scrollSpeed = difficulty.scrollSpeedAt(session.elapsedSeconds);
       session.tick(dt);
       _publishHud();
       _spawnCooldown -= dt;
@@ -146,7 +178,7 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
         .where((obstacle) => obstacle.isMounted)
         .map((obstacle) => obstacle.tracked)
         .toList();
-    final spacingSpeed = GameConfig.scrollSpeedAt(
+    final spacingSpeed = difficulty.scrollSpeedAt(
       session.elapsedSeconds + GameConfig.spawnLookAheadSeconds,
     );
     final lane = spawnDirector.attempt(
@@ -162,7 +194,7 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     }
 
     world.add(ObstacleBlock(lane: lane, spawnY: spawnY));
-    _spawnCooldown = GameConfig.spawnIntervalAt(session.elapsedSeconds);
+    _spawnCooldown = difficulty.spawnIntervalAt(session.elapsedSeconds);
     _maybeSpawnOrb(blockedLane: lane, spawnY: spawnY, existing: existing);
   }
 
@@ -171,7 +203,7 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     required double spawnY,
     required List<TrackedObstacle> existing,
   }) {
-    if (_random.nextDouble() > GameConfig.orbChance) {
+    if (_random.nextDouble() > difficulty.orbChance) {
       return;
     }
     final lane = blockedLane.opposite;
@@ -191,10 +223,12 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     final next = HudSnapshot(
       score: session.currentScore,
       elapsedSeconds: session.elapsedSeconds,
+      intensity: difficulty.intensityAt(session.elapsedSeconds),
     );
     final previous = hud.value;
     if (previous.score == next.score &&
-        previous.elapsedSeconds.floor() == next.elapsedSeconds.floor()) {
+        previous.elapsedSeconds.floor() == next.elapsedSeconds.floor() &&
+        (previous.intensity - next.intensity).abs() < 0.01) {
       return;
     }
     hud.value = next;

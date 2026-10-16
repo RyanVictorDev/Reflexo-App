@@ -24,6 +24,8 @@ void main() {
     );
 
     expect(find.text('340'), findsOneWidget);
+    expect(find.text('XP +340'), findsOneWidget);
+    expect(find.text('Subiu para Atento'), findsOneWidget);
     expect(find.text('Tempo 00:31'), findsOneWidget);
     expect(find.text('Energia 4'), findsOneWidget);
     expect(find.text('Jogar novamente'), findsOneWidget);
@@ -34,6 +36,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.dark, home: const HomePage()),
     );
+    await tester.ensureVisible(find.text('Jogar'));
     await tester.tap(find.text('Jogar'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -47,6 +50,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('340'), findsOneWidget);
+    await tester.ensureVisible(find.text('Menu'));
     await tester.tap(find.text('Menu'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));

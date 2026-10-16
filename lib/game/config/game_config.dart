@@ -15,19 +15,12 @@ class GameConfig {
   /// enquanto o obstáculo ainda está na tela.
   static const spawnLookAheadSeconds = 3.0;
 
-  static const initialScrollSpeed = 280.0;
-  static const maxScrollSpeed = 560.0;
-  static const speedRampSeconds = 75.0;
-
-  static const baseSpawnGapSeconds = 0.95;
-  static const minSpawnGapSeconds = 0.50;
   static const spawnRetrySeconds = 0.05;
 
   static const obstacleHeight = 36.0;
   static const obstacleWidthFactor = 0.72;
   static const minSameLaneGap = 56.0;
   static const orbRadius = 12.0;
-  static const orbChance = 0.62;
   static const playerDiameter = 36.0;
   static const playerYFactor = 0.78;
 
@@ -47,17 +40,6 @@ class GameConfig {
     pointsPerSecond: pointsPerSecond,
     pointsPerOrb: pointsPerOrb,
   );
-
-  static double scrollSpeedAt(double elapsedSeconds) {
-    final ramp = (elapsedSeconds / speedRampSeconds).clamp(0.0, 1.0);
-    return initialScrollSpeed + (maxScrollSpeed - initialScrollSpeed) * ramp;
-  }
-
-  static double spawnIntervalAt(double elapsedSeconds) {
-    final ramp = (elapsedSeconds / speedRampSeconds).clamp(0.0, 1.0);
-    return baseSpawnGapSeconds +
-        (minSpawnGapSeconds - baseSpawnGapSeconds) * ramp;
-  }
 
   static double reactionDistance(double speed) {
     return speed * (laneSwitchSeconds + reactionMarginSeconds);

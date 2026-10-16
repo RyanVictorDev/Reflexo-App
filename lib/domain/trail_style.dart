@@ -22,6 +22,7 @@ class TrailStyle {
     required this.name,
     required this.blurb,
     required this.price,
+    this.minStars = 0,
     required this.shape,
     required this.hot,
     required this.body,
@@ -38,6 +39,7 @@ class TrailStyle {
   final String name;
   final String blurb;
   final int price;
+  final int minStars;
   final TrailShape shape;
   final Color hot;
   final Color body;
@@ -153,6 +155,35 @@ class TrailStyle {
       widthScale: 0.7,
       emberScale: 0.45,
       opacity: 0.55,
+    ),
+    TrailStyle(
+      id: 'cometa',
+      name: 'Cometa',
+      blurb: 'Rastro longo e fino',
+      price: 320,
+      shape: TrailShape.streak,
+      hot: Color(0xFFFFFFFF),
+      body: Color(0xFF9AD7FF),
+      tip: Color(0xFF3A6BFF),
+      lengthScale: 1.35,
+      widthScale: 0.55,
+      emberScale: 1.1,
+    ),
+    TrailStyle(
+      id: 'eclipse',
+      name: 'Eclipse',
+      blurb: 'Anel escuro e quente',
+      price: 740,
+      minStars: 18,
+      shape: TrailShape.smoke,
+      hot: Color(0xFFFFE0A8),
+      body: Color(0xFF3A2A55),
+      tip: Color(0xFF120814),
+      lengthScale: 1.15,
+      widthScale: 1.4,
+      emberScale: 0.9,
+      opacity: 0.85,
+      fork: true,
     ),
   ];
 

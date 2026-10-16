@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:reflexo/app/app_route_observer.dart';
 import 'package:reflexo/app/app_theme.dart';
 import 'package:reflexo/audio/audio_controller.dart';
 import 'package:reflexo/data/player_repository.dart';
@@ -58,6 +59,7 @@ class _ReflexoAppState extends State<ReflexoApp> with WidgetsBindingObserver {
       title: 'Reflexo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      navigatorObservers: [appRouteObserver],
       home: const HomePage(),
     );
   }

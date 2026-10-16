@@ -8,6 +8,7 @@ class BallStyle {
     required this.mid,
     required this.glow,
     required this.price,
+    this.minStars = 0,
   });
 
   final String id;
@@ -16,6 +17,7 @@ class BallStyle {
   final Color mid;
   final Color glow;
   final int price;
+  final int minStars;
 
   bool get isFree => price == 0;
 
@@ -83,6 +85,31 @@ class BallStyle {
       mid: Color(0xFFD6E4FF),
       glow: Color(0x66FFFFFF),
       price: 640,
+    ),
+    BallStyle(
+      id: 'turquesa',
+      name: 'Turquesa',
+      core: Color(0xFFE8FFFB),
+      mid: Color(0xFF2EE6C7),
+      glow: Color(0x6614C8A8),
+      price: 240,
+    ),
+    BallStyle(
+      id: 'indigo',
+      name: 'Índigo',
+      core: Color(0xFFE8E8FF),
+      mid: Color(0xFF6A6BFF),
+      glow: Color(0x663030C8),
+      price: 500,
+    ),
+    BallStyle(
+      id: 'aurora',
+      name: 'Aurora',
+      core: Color(0xFFF4FFE8),
+      mid: Color(0xFF7DFFB2),
+      glow: Color(0x66C8A0FF),
+      price: 860,
+      minStars: 12,
     ),
   ];
 

@@ -17,6 +17,12 @@ class PlayerProfile {
     required this.unlockedTrailIds,
     required this.musicOn,
     required this.sfxOn,
+    required this.stageStars,
+    required this.claimedAchievementIds,
+    required this.claimedRankIds,
+    required this.runsPlayed,
+    required this.orbsLifetime,
+    required this.bestCombo,
   });
 
   final int xp;
@@ -31,6 +37,12 @@ class PlayerProfile {
   final Set<String> unlockedTrailIds;
   final bool musicOn;
   final bool sfxOn;
+  final Map<String, int> stageStars;
+  final Set<String> claimedAchievementIds;
+  final Set<String> claimedRankIds;
+  final int runsPlayed;
+  final int orbsLifetime;
+  final int bestCombo;
 
   BallStyle get style => BallStyle.byId(selectedColorId);
 
@@ -43,6 +55,12 @@ class PlayerProfile {
   bool ownsTrail(String id) => unlockedTrailIds.contains(id);
 
   int bestFor(String difficultyId) => bestByMode[difficultyId] ?? 0;
+
+  int starsFor(String id) => stageStars[id] ?? 0;
+
+  int get totalStars => stageStars.values.fold(0, (sum, value) => sum + value);
+
+  int get stagesCleared => stageStars.values.where((value) => value > 0).length;
 
   int get bestScore => bestFor(selectedDifficultyId);
 
@@ -65,6 +83,12 @@ class PlayerProfile {
       unlockedTrailIds: {TrailStyle.catalog.first.id},
       musicOn: true,
       sfxOn: true,
+      stageStars: const {},
+      claimedAchievementIds: const {},
+      claimedRankIds: const {},
+      runsPlayed: 0,
+      orbsLifetime: 0,
+      bestCombo: 0,
     );
   }
 
@@ -81,6 +105,12 @@ class PlayerProfile {
     Set<String>? unlockedTrailIds,
     bool? musicOn,
     bool? sfxOn,
+    Map<String, int>? stageStars,
+    Set<String>? claimedAchievementIds,
+    Set<String>? claimedRankIds,
+    int? runsPlayed,
+    int? orbsLifetime,
+    int? bestCombo,
   }) {
     return PlayerProfile(
       xp: xp ?? this.xp,
@@ -96,6 +126,13 @@ class PlayerProfile {
       unlockedTrailIds: unlockedTrailIds ?? this.unlockedTrailIds,
       musicOn: musicOn ?? this.musicOn,
       sfxOn: sfxOn ?? this.sfxOn,
+      stageStars: stageStars ?? this.stageStars,
+      claimedAchievementIds:
+          claimedAchievementIds ?? this.claimedAchievementIds,
+      claimedRankIds: claimedRankIds ?? this.claimedRankIds,
+      runsPlayed: runsPlayed ?? this.runsPlayed,
+      orbsLifetime: orbsLifetime ?? this.orbsLifetime,
+      bestCombo: bestCombo ?? this.bestCombo,
     );
   }
 }

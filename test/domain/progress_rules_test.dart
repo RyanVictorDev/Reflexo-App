@@ -2,10 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:reflexo/domain/ball_style.dart';
 import 'package:reflexo/domain/daily_challenges.dart';
 import 'package:reflexo/domain/difficulty.dart';
-import 'package:reflexo/domain/trail_style.dart';
 import 'package:reflexo/domain/game_result.dart';
 import 'package:reflexo/domain/player_profile.dart';
 import 'package:reflexo/domain/progress_rules.dart';
+import 'package:reflexo/domain/run_rhythm.dart';
+import 'package:reflexo/domain/stage_catalog.dart';
+import 'package:reflexo/domain/trail_style.dart';
 
 void main() {
   final day = DateTime(2026, 5, 1);
@@ -24,7 +26,11 @@ void main() {
     expect(first.isNewRecord, isTrue);
 
     final again = ProgressRules.settle(
-      quiet.copyWith(bestByMode: {Difficulty.normal.id: 340}, coins: 11),
+      quiet.copyWith(
+        bestByMode: {Difficulty.normal.id: 340},
+        coins: 11,
+        claimedRankIds: {'atento'},
+      ),
       result,
       day: day,
     );
@@ -174,5 +180,178 @@ void main() {
     )!;
     expect(equipped.coins, 0);
     expect(equipped.selectedTrailId, 'brasa');
+  });
+
+  test('fase paga a primeira conclusão e só a diferença depois', () {
+    final stage = StageCatalog.stages.first;
+    final clear = GameResult(
+      score: 250,
+      elapsedSeconds: 15,
+      orbsCollected: 4,
+      difficultyId: stage.difficultyId,
+      stageId: stage.id,
+      cleared: true,
+      phasesReached: 4,
+    );
+    final first = ProgressRules.settle(quiet, clear, day: day);
+    expect(first.starsEarned, 3);
+    expect(first.bestStars, 3);
+    expect(first.stageCoins, stage.clearCoins + 3 * stage.starCoins);
+    expect(first.stageXp, stage.clearXp);
+    expect(first.rhythmCoins, 0);
+    expect(
+      first.achievementsUnlocked.map((item) => item.id),
+      contains('primeira-fase'),
+    );
+
+    final saved = ProgressRules.applyReward(quiet, first);
+    final again = ProgressRules.settle(saved, clear, day: day);
+    expect(again.stageCoins, 0);
+    expect(again.stageXp, 0);
+    expect(again.achievementsUnlocked, isEmpty);
+    expect(again.bestStars, 3);
+
+    final partial = quiet.copyWith(
+      stageStars: {stage.id: 1},
+      claimedAchievementIds: {'primeira-fase'},
+      xp: 200,
+      claimedRankIds: {'atento'},
+    );
+    final improved = ProgressRules.settle(partial, clear, day: day);
+    expect(improved.stageCoins, 2 * stage.starCoins);
+    expect(improved.stageXp, 0);
+    expect(improved.bestStars, 3);
+  });
+
+  test('fase interrompida não dá estrela nem moeda de fase', () {
+    final stage = StageCatalog.stages.first;
+    final fail = GameResult(
+      score: 40,
+      elapsedSeconds: 4,
+      orbsCollected: 0,
+      difficultyId: stage.difficultyId,
+      stageId: stage.id,
+    );
+    final reward = ProgressRules.settle(quiet, fail, day: day);
+    expect(reward.starsEarned, 0);
+    expect(reward.stageCoins, 0);
+    expect(reward.stageXp, 0);
+    expect(reward.stageStars[stage.id], isNull);
+  });
+
+  test('ritmo paga na infinita e rank só na faixa cruzada agora', () {
+    final endless = ProgressRules.settle(
+      quiet,
+      const GameResult(
+        score: 400,
+        elapsedSeconds: 40,
+        orbsCollected: 0,
+        phasesReached: 3,
+      ),
+      day: day,
+    );
+    expect(endless.rhythmCoins, RunRhythm.bonusCoins(3, 1));
+    expect(endless.rankCoins, ProgressRules.purseFor('atento'));
+
+    final crossed = ProgressRules.settle(
+      PlayerProfile.initial().copyWith(
+        xp: 149,
+        challengeDay: DailyChallenges.dayKey(day),
+        completedChallengeIds: doneIds,
+      ),
+      const GameResult(score: 1, elapsedSeconds: 0.1, orbsCollected: 0),
+      day: day,
+    );
+    expect(crossed.rankedUp, isTrue);
+    expect(crossed.rankCoins, ProgressRules.purseFor('atento'));
+    final kept = ProgressRules.applyReward(
+      PlayerProfile.initial().copyWith(
+        xp: 149,
+        challengeDay: DailyChallenges.dayKey(day),
+        completedChallengeIds: doneIds,
+      ),
+      crossed,
+    );
+    final repeat = ProgressRules.settle(
+      kept,
+      const GameResult(score: 10, elapsedSeconds: 1, orbsCollected: 0),
+      day: day,
+    );
+    expect(repeat.rankCoins, 0);
+
+    final legend = ProgressRules.settle(
+      quiet.copyWith(xp: 10000),
+      const GameResult(score: 100, elapsedSeconds: 10, orbsCollected: 0),
+      day: day,
+    );
+    expect(legend.rankCoins, 0);
+  });
+
+  test('conquista paga uma vez', () {
+    final first = ProgressRules.settle(
+      quiet.copyWith(
+        runsPlayed: 19,
+        xp: 1000,
+        claimedRankIds: {'atento', 'agil', 'preciso'},
+      ),
+      const GameResult(
+        score: 0,
+        elapsedSeconds: 0,
+        orbsCollected: 0,
+        peakCombo: 4,
+      ),
+      day: day,
+    );
+    expect(
+      first.achievementsUnlocked.map((item) => item.id),
+      containsAll(['vinte-partidas', 'combo-4']),
+    );
+    final saved = ProgressRules.applyReward(
+      quiet.copyWith(
+        runsPlayed: 19,
+        xp: 1000,
+        claimedRankIds: {'atento', 'agil', 'preciso'},
+      ),
+      first,
+    );
+    final repeat = ProgressRules.settle(
+      saved,
+      const GameResult(
+        score: 0,
+        elapsedSeconds: 0,
+        orbsCollected: 0,
+        peakCombo: 4,
+      ),
+      day: day,
+    );
+    expect(repeat.achievementsUnlocked, isEmpty);
+    expect(repeat.achievementCoins, 0);
+  });
+
+  test('item de estrelas recusa saldo alto sem estrelas', () {
+    final aurora = BallStyle.byId('aurora');
+    final eclipse = TrailStyle.byId('eclipse');
+    final rich = PlayerProfile.initial().copyWith(
+      coins: aurora.price + eclipse.price,
+    );
+    expect(ProgressRules.purchase(rich, aurora), isNull);
+    expect(ProgressRules.purchaseTrail(rich, eclipse), isNull);
+
+    final starred = rich.copyWith(stageStars: {'x': aurora.minStars});
+    expect(ProgressRules.purchaseTrail(starred, eclipse), isNull);
+    final enough = rich.copyWith(stageStars: {'x': eclipse.minStars});
+    final bought = ProgressRules.purchase(enough, aurora)!;
+    expect(bought.owns('aurora'), isTrue);
+    expect(bought.coins, eclipse.price);
+
+    final trail = ProgressRules.purchaseTrail(enough, eclipse)!;
+    expect(trail.ownsTrail('eclipse'), isTrue);
+    expect(
+      ProgressRules.purchaseTrail(
+        trail.copyWith(selectedTrailId: 'chama', stageStars: const {}),
+        eclipse,
+      )!.selectedTrailId,
+      'eclipse',
+    );
   });
 }

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:reflexo/game/config/game_config.dart';
 import 'package:reflexo/game/reflexo_game.dart';
+import 'package:reflexo/domain/run_variety.dart';
 
 class _Star {
   _Star({
@@ -87,6 +88,12 @@ class LaneBackdrop extends PositionComponent
     canvas.drawRect(Rect.fromLTWH(0, 0, laneWidth, size.y), _laneA);
     canvas.drawRect(Rect.fromLTWH(laneWidth, 0, laneWidth, size.y), _laneB);
     canvas.drawRect(Rect.fromLTWH(laneWidth - 1, 0, 2, size.y), _divider);
+    final tint = switch (game.setup.kind) {
+      ObstacleKind.bar => const Color(0x00000000),
+      ObstacleKind.blade => const Color(0x2414C8C8),
+      ObstacleKind.wall => const Color(0x28C45A18),
+    };
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y), Paint()..color = tint);
 
     var dashY = -36 + _dashOffset;
     while (dashY < size.y) {

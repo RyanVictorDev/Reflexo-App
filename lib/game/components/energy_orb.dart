@@ -9,15 +9,18 @@ import 'package:reflexo/game/config/game_config.dart';
 import 'package:reflexo/game/reflexo_game.dart';
 
 class EnergyOrb extends PositionComponent with HasGameReference<ReflexoGame> {
-  EnergyOrb({required this.lane, required this.spawnY});
+  EnergyOrb({required this.lane, required this.spawnY, this.risky = false});
 
   final Lane lane;
   final double spawnY;
+  final bool risky;
   bool collected = false;
   double _spin = 0;
 
-  final Paint _glow = Paint()..color = GameConfig.energyGlow;
-  final Paint _core = Paint()..color = GameConfig.energy;
+  late final Paint _glow = Paint()
+    ..color = risky ? const Color(0x66F5C542) : GameConfig.energyGlow;
+  late final Paint _core = Paint()
+    ..color = risky ? const Color(0xFFF5C542) : GameConfig.energy;
   final Paint _spark = Paint()..color = GameConfig.playerCore;
 
   @override

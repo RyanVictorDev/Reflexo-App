@@ -21,6 +21,12 @@ void main() {
     expect(profile.ownsTrail(TrailStyle.catalog.first.id), isTrue);
     expect(profile.musicOn, isTrue);
     expect(profile.completedChallengeIds, isEmpty);
+    expect(profile.totalStars, 0);
+    expect(profile.runsPlayed, 0);
+    expect(profile.orbsLifetime, 0);
+    expect(profile.bestCombo, 0);
+    expect(profile.claimedAchievementIds, isEmpty);
+    expect(profile.claimedRankIds, isEmpty);
   });
 
   test('grava e relê xp, modo, recordes e desafios', () async {
@@ -34,6 +40,12 @@ void main() {
       coins: 7,
       selectedTrailId: 'gelo',
       unlockedTrailIds: {'chama', 'gelo'},
+      stageStars: const {'calmo-aquecimento': 3, 'calmo-coleta': 1},
+      claimedAchievementIds: {'primeira-fase'},
+      claimedRankIds: {'atento'},
+      runsPlayed: 4,
+      orbsLifetime: 22,
+      bestCombo: 3,
     );
     await PlayerRepository.instance.save(profile);
     final loaded = await PlayerRepository.instance.load();
@@ -47,5 +59,13 @@ void main() {
     expect(loaded.coins, 7);
     expect(loaded.selectedTrailId, 'gelo');
     expect(loaded.ownsTrail('gelo'), isTrue);
+    expect(loaded.starsFor('calmo-aquecimento'), 3);
+    expect(loaded.starsFor('calmo-coleta'), 1);
+    expect(loaded.totalStars, 4);
+    expect(loaded.claimedAchievementIds, {'primeira-fase'});
+    expect(loaded.claimedRankIds, {'atento'});
+    expect(loaded.runsPlayed, 4);
+    expect(loaded.orbsLifetime, 22);
+    expect(loaded.bestCombo, 3);
   });
 }

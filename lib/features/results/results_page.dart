@@ -5,6 +5,7 @@ import 'package:reflexo/audio/audio_controller.dart';
 import 'package:reflexo/domain/difficulty.dart';
 import 'package:reflexo/domain/progress_rules.dart';
 import 'package:reflexo/domain/rank_ladder.dart';
+import 'package:reflexo/domain/stage_catalog.dart';
 import 'package:reflexo/features/gameplay/gameplay_page.dart';
 import 'package:reflexo/shared/utils/format_time.dart';
 import 'package:reflexo/shared/widgets/centered_menu.dart';
@@ -27,6 +28,12 @@ class ResultsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final result = reward.result;
+    final stage = result.stageId == null
+        ? null
+        : StageCatalog.find(result.stageId!);
+    final next = stage != null && result.cleared
+        ? StageCatalog.after(stage)
+        : null;
     return Scaffold(
       body: CenteredMenu(
         children: [
@@ -61,12 +68,58 @@ class ResultsPage extends StatelessWidget {
             textAlign: TextAlign.center,
             style: text.titleMedium,
           ),
+          if (stage != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              result.cleared
+                  ? 'Fase concluída · ${stage.name}'
+                  : 'Fase interrompida · ${stage.name}',
+              textAlign: TextAlign.center,
+              style: text.titleMedium?.copyWith(
+                color: result.cleared ? const Color(0xFFB6FF6A) : null,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              result.cleared
+                  ? 'Estrelas ${reward.starsEarned} de 3'
+                  : 'Sem estrela',
+              textAlign: TextAlign.center,
+              style: text.titleMedium?.copyWith(
+                color: reward.starsEarned > 0 ? const Color(0xFFF5C542) : null,
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
             _coinsLabel(reward),
             textAlign: TextAlign.center,
             style: text.titleMedium,
           ),
+          if (reward.stageCoins > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Fase +${reward.stageCoins}',
+              textAlign: TextAlign.center,
+              style: text.titleMedium?.copyWith(color: const Color(0xFFB6FF6A)),
+            ),
+          ],
+          if (reward.rhythmCoins > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Ritmo +${reward.rhythmCoins}',
+              textAlign: TextAlign.center,
+              style: text.titleMedium?.copyWith(color: const Color(0xFF8AF0FF)),
+            ),
+          ],
+          if (reward.rankCoins > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Bolsa do rank +${reward.rankCoins}',
+              textAlign: TextAlign.center,
+              style: text.titleMedium?.copyWith(color: const Color(0xFFF5C542)),
+            ),
+          ],
           if (reward.bonusCoins > 0) ...[
             const SizedBox(height: 6),
             Text(
@@ -81,6 +134,14 @@ class ResultsPage extends StatelessWidget {
             textAlign: TextAlign.center,
             style: text.titleMedium,
           ),
+          if (reward.stageXp > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              'XP da fase +${reward.stageXp}',
+              textAlign: TextAlign.center,
+              style: text.titleMedium,
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
             reward.rankedUp
@@ -120,16 +181,39 @@ class ResultsPage extends StatelessWidget {
               style: text.bodyLarge?.copyWith(color: const Color(0xFFB6FF6A)),
             ),
           ],
+          for (final achievement in reward.achievementsUnlocked) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Conquista · ${achievement.label}',
+              textAlign: TextAlign.center,
+              style: text.bodyLarge?.copyWith(color: const Color(0xFF8AF0FF)),
+            ),
+          ],
           const SizedBox(height: 28),
-          FilledButton(
-            onPressed: () {
-              unawaited(AudioController.instance.playEffect('ui'));
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute<void>(builder: (_) => const GameplayPage()),
-              );
-            },
-            child: const Text('Jogar novamente'),
-          ),
+          if (next != null) ...[
+            FilledButton(
+              onPressed: () {
+                unawaited(AudioController.instance.playEffect('ui'));
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute<void>(
+                    builder: (_) => GameplayPage(stage: next),
+                  ),
+                );
+              },
+              child: Text('Próxima fase · ${next.name}'),
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (next != null)
+            TextButton(
+              onPressed: () => _replay(context, stage),
+              child: const Text('Jogar novamente'),
+            )
+          else
+            FilledButton(
+              onPressed: () => _replay(context, stage),
+              child: const Text('Jogar novamente'),
+            ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () {
@@ -140,6 +224,13 @@ class ResultsPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _replay(BuildContext context, Stage? stage) {
+    unawaited(AudioController.instance.playEffect('ui'));
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => GameplayPage(stage: stage)),
     );
   }
 }

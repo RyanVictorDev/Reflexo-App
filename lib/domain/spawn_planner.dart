@@ -1,4 +1,5 @@
 import 'package:reflexo/domain/lane.dart';
+import 'package:reflexo/domain/run_variety.dart';
 
 class TrackedObstacle {
   const TrackedObstacle({
@@ -90,10 +91,15 @@ class SpawnPlanner {
 
 /// Alterna a faixa preferida e só avança essa preferência quando o spawn cabe.
 class SpawnDirector {
-  SpawnDirector({this.preferred = Lane.left});
+  SpawnDirector({
+    this.preferred = Lane.left,
+    this.pattern = SpawnPattern.zigzag,
+  });
 
   Lane preferred;
+  SpawnPattern pattern;
   final SpawnPlanner planner = const SpawnPlanner();
+  int _stay = 1;
 
   Lane? attempt({
     required double spawnY,
@@ -110,9 +116,15 @@ class SpawnDirector {
       minSameLaneGap: minSameLaneGap,
       existing: existing,
     );
-    if (lane != null) {
-      preferred = lane.opposite;
+    if (lane == null) {
+      return null;
     }
+    if (pattern == SpawnPattern.twin && lane == preferred && _stay > 0) {
+      _stay -= 1;
+      return lane;
+    }
+    preferred = lane.opposite;
+    _stay = pattern == SpawnPattern.twin ? 1 : 0;
     return lane;
   }
 }

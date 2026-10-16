@@ -26,6 +26,12 @@ class PlayerRepository {
   static const _unlockedTrails = 'unlocked_trails';
   static const _music = 'music_on';
   static const _sfx = 'sfx_on';
+  static const _stageStars = 'stage_stars';
+  static const _achievements = 'claimed_achievements';
+  static const _ranks = 'claimed_ranks';
+  static const _runs = 'runs_played';
+  static const _orbs = 'orbs_lifetime';
+  static const _combo = 'best_combo';
 
   Future<PlayerProfile> load() async {
     try {
@@ -65,6 +71,13 @@ class PlayerRepository {
         unlockedTrailIds: unlockedTrails,
         musicOn: prefs.getBool(_music) ?? true,
         sfxOn: prefs.getBool(_sfx) ?? true,
+        stageStars: _decodeStars(prefs.getStringList(_stageStars)),
+        claimedAchievementIds:
+            prefs.getStringList(_achievements)?.toSet() ?? {},
+        claimedRankIds: prefs.getStringList(_ranks)?.toSet() ?? {},
+        runsPlayed: prefs.getInt(_runs) ?? 0,
+        orbsLifetime: prefs.getInt(_orbs) ?? 0,
+        bestCombo: prefs.getInt(_combo) ?? 0,
       );
     } catch (_) {
       return PlayerProfile.initial();
@@ -95,6 +108,15 @@ class PlayerRepository {
       );
       await prefs.setBool(_music, profile.musicOn);
       await prefs.setBool(_sfx, profile.sfxOn);
+      await prefs.setStringList(_stageStars, _encodeStars(profile.stageStars));
+      await prefs.setStringList(
+        _achievements,
+        profile.claimedAchievementIds.toList(),
+      );
+      await prefs.setStringList(_ranks, profile.claimedRankIds.toList());
+      await prefs.setInt(_runs, profile.runsPlayed);
+      await prefs.setInt(_orbs, profile.orbsLifetime);
+      await prefs.setInt(_combo, profile.bestCombo);
     } catch (_) {}
   }
 
@@ -124,4 +146,27 @@ class PlayerRepository {
     await save(next);
     return next;
   }
+}
+
+List<String> _encodeStars(Map<String, int> stars) {
+  return [
+    for (final entry in stars.entries)
+      if (entry.value > 0) '${entry.key}:${entry.value}',
+  ];
+}
+
+Map<String, int> _decodeStars(List<String>? raw) {
+  final stars = <String, int>{};
+  for (final item in raw ?? const <String>[]) {
+    final split = item.split(':');
+    if (split.length != 2) {
+      continue;
+    }
+    final value = int.tryParse(split[1]);
+    if (value == null || value <= 0) {
+      continue;
+    }
+    stars[split[0]] = value > 3 ? 3 : value;
+  }
+  return stars;
 }

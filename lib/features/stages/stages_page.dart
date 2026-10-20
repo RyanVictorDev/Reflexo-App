@@ -181,7 +181,7 @@ class _StageTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      stage.objective,
+                      '${stage.lanes} faixas · ${stage.objective}',
                       style: text.bodyMedium?.copyWith(color: Colors.white70),
                     ),
                     Text(

@@ -101,6 +101,97 @@ class SpawnDirector {
   final SpawnPlanner planner = const SpawnPlanner();
   int _stay = 1;
 
+  int _gap = 0;
+  int _dir = 1;
+  int _hold = 0;
+  bool _opened = false;
+
+  Lane get gap => Lane(_gap);
+
+  /// Uma leva. Em duas faixas continua o spawn antigo. Com mais faixas,
+  /// fecha todas menos um corredor, e esse corredor anda no máximo uma faixa.
+  SpawnWave wave({
+    required int laneCount,
+    required double spawnY,
+    required double halfExtent,
+    required double reactionDistance,
+    required double minSameLaneGap,
+    required List<TrackedObstacle> existing,
+  }) {
+    if (laneCount <= 2) {
+      final lane = attempt(
+        spawnY: spawnY,
+        halfExtent: halfExtent,
+        reactionDistance: reactionDistance,
+        minSameLaneGap: minSameLaneGap,
+        existing: existing,
+      );
+      if (lane == null) {
+        return SpawnWave(blocked: const [], gap: gap);
+      }
+      return SpawnWave(blocked: [lane], gap: lane.opposite);
+    }
+
+    final nextGap = _peekGap(laneCount);
+    final blocked = <Lane>[];
+    for (var index = 0; index < laneCount; index++) {
+      if (index == nextGap) {
+        continue;
+      }
+      final lane = Lane(index);
+      if (planner.isFair(
+        lane: lane,
+        spawnY: spawnY,
+        halfExtent: halfExtent,
+        reactionDistance: 0,
+        minSameLaneGap: minSameLaneGap,
+        existing: existing,
+      )) {
+        blocked.add(lane);
+      }
+    }
+    if (blocked.isEmpty) {
+      return SpawnWave(blocked: const [], gap: gap);
+    }
+    _commitGap(laneCount);
+    return SpawnWave(blocked: blocked, gap: gap);
+  }
+
+  int _peekGap(int laneCount) {
+    if (!_opened || (pattern == SpawnPattern.twin && _hold > 0)) {
+      return _gap.clamp(0, laneCount - 1);
+    }
+    var dir = _dir;
+    var next = _gap + dir;
+    if (next < 0 || next >= laneCount) {
+      dir = -dir;
+      next = (_gap + dir).clamp(0, laneCount - 1);
+    }
+    return next;
+  }
+
+  void _commitGap(int laneCount) {
+    if (!_opened) {
+      _opened = true;
+      _gap = 0;
+      _hold = pattern == SpawnPattern.twin ? 1 : 0;
+      return;
+    }
+    if (pattern == SpawnPattern.twin && _hold > 0) {
+      _hold -= 1;
+      _gap = _gap.clamp(0, laneCount - 1);
+      return;
+    }
+    final next = _gap + _dir;
+    if (next < 0 || next >= laneCount) {
+      _dir = -_dir;
+      _gap = (_gap + _dir).clamp(0, laneCount - 1);
+    } else {
+      _gap = next;
+    }
+    _hold = pattern == SpawnPattern.twin ? 1 : 0;
+  }
+
   Lane? attempt({
     required double spawnY,
     required double halfExtent,
@@ -127,4 +218,11 @@ class SpawnDirector {
     _stay = pattern == SpawnPattern.twin ? 1 : 0;
     return lane;
   }
+}
+
+class SpawnWave {
+  const SpawnWave({required this.blocked, required this.gap});
+
+  final List<Lane> blocked;
+  final Lane gap;
 }

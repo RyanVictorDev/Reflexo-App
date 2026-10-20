@@ -12,7 +12,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
 
-  const result = GameResult(score: 340, elapsedSeconds: 31.4, orbsCollected: 4);
+  const result = GameResult(score: 800, elapsedSeconds: 31.4, orbsCollected: 4);
   final reward = ProgressRules.settle(PlayerProfile.initial(), result);
 
   testWidgets('mostra a pontuação e as duas saídas', (tester) async {
@@ -23,8 +23,8 @@ void main() {
       ),
     );
 
-    expect(find.text('340'), findsOneWidget);
-    expect(find.text('XP +340'), findsOneWidget);
+    expect(find.text('800'), findsOneWidget);
+    expect(find.text('XP +800'), findsOneWidget);
     expect(find.text('Subiu para Atento'), findsOneWidget);
     expect(find.text('Tempo 00:31'), findsOneWidget);
     expect(find.text('Energia 4'), findsOneWidget);
@@ -49,13 +49,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('340'), findsOneWidget);
+    expect(find.text('800'), findsOneWidget);
     await tester.ensureVisible(find.text('Menu'));
     await tester.tap(find.text('Menu'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Jogar'), findsOneWidget);
-    expect(find.text('340'), findsNothing);
+    expect(find.text('800'), findsNothing);
   });
 }

@@ -4,9 +4,9 @@ import 'package:reflexo/domain/run_rhythm.dart';
 import 'package:reflexo/domain/stage_catalog.dart';
 
 void main() {
-  test('são doze fases em três arcos e a próxima abre com uma estrela', () {
-    expect(StageCatalog.stages, hasLength(12));
-    expect(StageCatalog.stages.map((stage) => stage.id).toSet(), hasLength(12));
+  test('são vinte fases em cinco arcos e a próxima abre com uma estrela', () {
+    expect(StageCatalog.stages, hasLength(20));
+    expect(StageCatalog.stages.map((stage) => stage.id).toSet(), hasLength(20));
     expect(
       StageCatalog.stages.where((stage) => stage.arc == 'Calmo'),
       hasLength(4),
@@ -19,6 +19,21 @@ void main() {
       StageCatalog.stages.where((stage) => stage.arc == 'Intenso'),
       hasLength(4),
     );
+    expect(
+      StageCatalog.stages.where((stage) => stage.arc == 'Vertigem'),
+      hasLength(4),
+    );
+    expect(
+      StageCatalog.stages.where((stage) => stage.arc == 'Abismo'),
+      hasLength(4),
+    );
+    expect(StageCatalog.stages.first.lanes, 2);
+    expect(StageCatalog.stages.last.lanes, 20);
+    var previous = 0;
+    for (final stage in StageCatalog.stages) {
+      expect(stage.lanes, greaterThanOrEqualTo(previous));
+      previous = stage.lanes;
+    }
 
     final first = StageCatalog.stages.first;
     final second = StageCatalog.stages[1];

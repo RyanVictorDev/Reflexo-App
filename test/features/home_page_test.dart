@@ -45,7 +45,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Toque para trocar de faixa'), findsOneWidget);
+    expect(find.text('Arraste para mudar de faixa'), findsOneWidget);
     expect(find.text('00:00'), findsOneWidget);
   });
 

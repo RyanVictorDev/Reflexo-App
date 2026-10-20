@@ -84,26 +84,41 @@ class LaneBackdrop extends PositionComponent
 
   @override
   void render(Canvas canvas) {
-    final laneWidth = size.x / 2;
-    canvas.drawRect(Rect.fromLTWH(0, 0, laneWidth, size.y), _laneA);
-    canvas.drawRect(Rect.fromLTWH(laneWidth, 0, laneWidth, size.y), _laneB);
-    canvas.drawRect(Rect.fromLTWH(laneWidth - 1, 0, 2, size.y), _divider);
+    size = Vector2(game.worldWidth, game.size.y);
+    final laneWidth = game.laneWidth;
+    final lanes = game.laneCount;
+    for (var index = 0; index < lanes; index++) {
+      canvas.drawRect(
+        Rect.fromLTWH(index * laneWidth, 0, laneWidth, size.y),
+        index.isEven ? _laneA : _laneB,
+      );
+      if (index > 0) {
+        canvas.drawRect(
+          Rect.fromLTWH(index * laneWidth - 1, 0, 2, size.y),
+          _divider,
+        );
+      }
+    }
     final tint = switch (game.setup.kind) {
       ObstacleKind.bar => const Color(0x00000000),
       ObstacleKind.blade => const Color(0x2414C8C8),
       ObstacleKind.wall => const Color(0x28C45A18),
+      ObstacleKind.spike => const Color(0x22FF4D8D),
+      ObstacleKind.pendulum => const Color(0x221CFF6A),
     };
     canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y), Paint()..color = tint);
 
     var dashY = -36 + _dashOffset;
     while (dashY < size.y) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(laneWidth - 2, dashY, 4, 16),
-          const Radius.circular(2),
-        ),
-        _dash,
-      );
+      for (var index = 1; index < lanes; index++) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(index * laneWidth - 2, dashY, 4, 16),
+            const Radius.circular(2),
+          ),
+          _dash,
+        );
+      }
       dashY += 36;
     }
 

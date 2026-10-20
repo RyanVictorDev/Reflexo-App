@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reflexo/domain/difficulty.dart';
 import 'package:reflexo/domain/lane.dart';
+import 'package:reflexo/domain/lane_growth.dart';
 import 'package:reflexo/domain/spawn_planner.dart';
 import 'package:reflexo/game/config/game_config.dart';
 
@@ -178,4 +179,33 @@ void main() {
       expect(right, greaterThan(0));
     });
   }
+
+  test('a pista infinita abre faixas até vinte', () {
+    expect(LaneGrowth.endlessAt(0), 2);
+    expect(LaneGrowth.endlessAt(12), 3);
+    expect(LaneGrowth.endlessAt(12 * 18), 20);
+    expect(LaneGrowth.endlessAt(1000), 20);
+  });
+
+  test('com várias faixas sobra um corredor e ele anda uma de cada vez', () {
+    final director = SpawnDirector();
+    Lane? previous;
+    for (var step = 0; step < 10; step++) {
+      final wave = director.wave(
+        laneCount: 6,
+        spawnY: -400.0 * step,
+        halfExtent: 18,
+        reactionDistance: 80,
+        minSameLaneGap: 56,
+        existing: const [],
+      );
+      expect(wave.blocked, hasLength(5));
+      expect(wave.blocked.contains(wave.gap), isFalse);
+      if (previous != null) {
+        expect((wave.gap.index - previous.index).abs(), lessThanOrEqualTo(1));
+      }
+      previous = wave.gap;
+    }
+    expect(previous!.index, greaterThan(0));
+  });
 }

@@ -164,6 +164,24 @@ class _Hud extends StatelessWidget {
                           shadows: _hudShadow,
                         ),
                       ),
+                      Text(
+                        '${snapshot.lanes} faixas',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF8AF0FF),
+                          shadows: _hudShadow,
+                        ),
+                      ),
+                      if (snapshot.boon.isNotEmpty)
+                        Text(
+                          snapshot.boon,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: const Color(0xFFF5C542),
+                                shadows: _hudShadow,
+                              ),
+                        ),
                       if (snapshot.twist.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
@@ -204,6 +222,23 @@ class _Hud extends StatelessWidget {
                         shadows: _hudShadow,
                       ),
                     ),
+                    Text(
+                      '${snapshot.lanes} faixas',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF8AF0FF),
+                        shadows: _hudShadow,
+                      ),
+                    ),
+                    if (snapshot.boon.isNotEmpty)
+                      Text(
+                        snapshot.boon,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFFF5C542),
+                          shadows: _hudShadow,
+                        ),
+                      ),
                     if (snapshot.twist.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
@@ -244,7 +279,7 @@ class _Hud extends StatelessWidget {
                 return const SizedBox.shrink();
               }
               return Text(
-                'Toque para trocar de faixa',
+                'Arraste para mudar de faixa',
                 style: Theme.of(context).textTheme.titleMedium
                     ?.copyWith(color: Colors.white70, shadows: _hudShadow),
               );

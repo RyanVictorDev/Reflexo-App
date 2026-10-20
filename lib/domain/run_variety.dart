@@ -1,7 +1,7 @@
 import 'package:reflexo/domain/run_rhythm.dart';
 import 'package:reflexo/domain/stage_catalog.dart';
 
-enum ObstacleKind { bar, blade, wall }
+enum ObstacleKind { bar, blade, wall, spike, pendulum }
 
 enum SpawnPattern { zigzag, twin, bait }
 
@@ -27,12 +27,16 @@ class RunSetup {
     ObstacleKind.bar => 1,
     ObstacleKind.blade => 0.62,
     ObstacleKind.wall => 1.7,
+    ObstacleKind.spike => 1.45,
+    ObstacleKind.pendulum => 0.9,
   };
 
   double get widthFactor => switch (kind) {
     ObstacleKind.bar => 0.72,
     ObstacleKind.blade => 0.38,
     ObstacleKind.wall => 0.94,
+    ObstacleKind.spike => 0.42,
+    ObstacleKind.pendulum => 0.56,
   };
 }
 
@@ -80,10 +84,12 @@ class RunVariety {
       1 => SpawnPattern.twin,
       _ => SpawnPattern.bait,
     };
-    final kind = switch ((index ~/ 3) % 3) {
+    final kind = switch ((index ~/ 3) % 5) {
       0 => ObstacleKind.bar,
       1 => ObstacleKind.blade,
-      _ => ObstacleKind.wall,
+      2 => ObstacleKind.wall,
+      3 => ObstacleKind.spike,
+      _ => ObstacleKind.pendulum,
     };
     return RunSetup(pattern: pattern, kind: kind);
   }

@@ -80,8 +80,8 @@ void main() {
     expect(fierce.isNewRecord, isTrue);
     expect(fierce.bestByMode['normal'], 150);
     expect(fierce.bestByMode['calmo'], 800);
-    expect(fierce.rankedUp, isTrue);
-    expect(fierce.rank.name, 'Atento');
+    expect(fierce.rankedUp, isFalse);
+    expect(fierce.rank.name, 'Iniciante');
 
     final short = ProgressRules.settle(
       PlayerProfile.initial().copyWith(
@@ -251,11 +251,11 @@ void main() {
       day: day,
     );
     expect(endless.rhythmCoins, RunRhythm.bonusCoins(3, 1));
-    expect(endless.rankCoins, ProgressRules.purseFor('atento'));
+    expect(endless.rankCoins, 0);
 
     final crossed = ProgressRules.settle(
       PlayerProfile.initial().copyWith(
-        xp: 149,
+        xp: 799,
         challengeDay: DailyChallenges.dayKey(day),
         completedChallengeIds: doneIds,
       ),
@@ -266,7 +266,7 @@ void main() {
     expect(crossed.rankCoins, ProgressRules.purseFor('atento'));
     final kept = ProgressRules.applyReward(
       PlayerProfile.initial().copyWith(
-        xp: 149,
+        xp: 799,
         challengeDay: DailyChallenges.dayKey(day),
         completedChallengeIds: doneIds,
       ),
@@ -280,7 +280,7 @@ void main() {
     expect(repeat.rankCoins, 0);
 
     final legend = ProgressRules.settle(
-      quiet.copyWith(xp: 10000),
+      quiet.copyWith(xp: 60000),
       const GameResult(score: 100, elapsedSeconds: 10, orbsCollected: 0),
       day: day,
     );

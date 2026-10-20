@@ -11,13 +11,13 @@ class RankLadder {
 
   static const ranks = [
     Rank(id: 'iniciante', name: 'Iniciante', minXp: 0),
-    Rank(id: 'atento', name: 'Atento', minXp: 150),
-    Rank(id: 'agil', name: 'Ágil', minXp: 450),
-    Rank(id: 'preciso', name: 'Preciso', minXp: 1000),
-    Rank(id: 'veloz', name: 'Veloz', minXp: 2000),
-    Rank(id: 'reflexo', name: 'Reflexo', minXp: 3800),
-    Rank(id: 'instinto', name: 'Instinto', minXp: 6500),
-    Rank(id: 'lenda', name: 'Lenda', minXp: 10000),
+    Rank(id: 'atento', name: 'Atento', minXp: 800),
+    Rank(id: 'agil', name: 'Ágil', minXp: 2500),
+    Rank(id: 'preciso', name: 'Preciso', minXp: 6000),
+    Rank(id: 'veloz', name: 'Veloz', minXp: 12000),
+    Rank(id: 'reflexo', name: 'Reflexo', minXp: 22000),
+    Rank(id: 'instinto', name: 'Instinto', minXp: 38000),
+    Rank(id: 'lenda', name: 'Lenda', minXp: 60000),
   ];
 
   static Rank at(int xp) {

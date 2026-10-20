@@ -48,17 +48,17 @@ void main() {
 
   test('rank sobe nos limiares e para na lenda', () {
     expect(RankLadder.at(0).name, 'Iniciante');
-    expect(RankLadder.at(149).name, 'Iniciante');
-    expect(RankLadder.at(150).name, 'Atento');
-    expect(RankLadder.at(450).name, 'Ágil');
-    expect(RankLadder.at(10000).name, 'Lenda');
-    expect(RankLadder.at(50000).name, 'Lenda');
+    expect(RankLadder.at(799).name, 'Iniciante');
+    expect(RankLadder.at(800).name, 'Atento');
+    expect(RankLadder.at(2500).name, 'Ágil');
+    expect(RankLadder.at(60000).name, 'Lenda');
+    expect(RankLadder.at(90000).name, 'Lenda');
     expect(RankLadder.progress(0), 0);
-    expect(RankLadder.progress(75), closeTo(0.5, 0.001));
-    expect(RankLadder.xpUntilNext(149), 1);
-    expect(RankLadder.progress(10000), 1);
-    expect(RankLadder.xpUntilNext(10000), 0);
-    expect(RankLadder.nextAfter(RankLadder.at(10000)), isNull);
+    expect(RankLadder.progress(400), closeTo(0.5, 0.001));
+    expect(RankLadder.xpUntilNext(799), 1);
+    expect(RankLadder.progress(60000), 1);
+    expect(RankLadder.xpUntilNext(60000), 0);
+    expect(RankLadder.nextAfter(RankLadder.at(60000)), isNull);
   });
 
   test('o dia escolhe três desafios estáveis e distintos', () {

@@ -42,6 +42,18 @@ class EnergyOrb extends PositionComponent with HasGameReference<ReflexoGame> {
     }
     _spin += dt * 2.4;
     position.y += game.scrollSpeed * dt;
+    final homeX = game.laneCenterX(lane);
+    if (game.magnetActive && game.player.isMounted) {
+      final player = game.player.position;
+      final dy = (player.y - position.y).abs();
+      if (dy < 240 && (player.x - position.x).abs() < game.laneWidth * 2.4) {
+        position.x += (player.x - position.x) * (dt * 7).clamp(0.0, 1.0);
+      } else {
+        position.x = homeX;
+      }
+    } else {
+      position.x = homeX;
+    }
     if (position.y - size.y > game.size.y + 40) {
       removeFromParent();
     }

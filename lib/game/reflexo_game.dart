@@ -13,11 +13,13 @@ import 'package:reflexo/domain/difficulty.dart';
 import 'package:reflexo/domain/game_result.dart';
 import 'package:reflexo/domain/game_status.dart';
 import 'package:reflexo/domain/lane.dart';
+import 'package:reflexo/domain/lane_growth.dart';
 import 'package:reflexo/domain/run_rhythm.dart';
 import 'package:reflexo/domain/run_session.dart';
 import 'package:reflexo/domain/run_variety.dart';
 import 'package:reflexo/domain/spawn_planner.dart';
 import 'package:reflexo/domain/stage_catalog.dart';
+import 'package:reflexo/game/components/booster.dart';
 import 'package:reflexo/game/components/energy_orb.dart';
 import 'package:reflexo/game/components/lane_backdrop.dart';
 import 'package:reflexo/game/components/obstacle_block.dart';
@@ -37,6 +39,8 @@ class HudSnapshot {
     this.goalDetail = '',
     this.goalProgress = 0,
     this.twist = '',
+    this.lanes = 2,
+    this.boon = '',
   });
 
   final int score;
@@ -49,9 +53,11 @@ class HudSnapshot {
   final String goalDetail;
   final double goalProgress;
   final String twist;
+  final int lanes;
+  final String boon;
 }
 
-class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
+class ReflexoGame extends FlameGame with HasCollisionDetection, DragCallbacks {
   ReflexoGame({
     BallStyle? style,
     TrailStyle? trail,
@@ -84,6 +90,7 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
                        ? RunVariety.forEndless(0)
                        : RunVariety.forStage(stage))
                    .hint,
+           lanes: stage?.lanes ?? 2,
          ),
        );
 
@@ -101,6 +108,14 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
   late final PlayerOrb player = PlayerOrb();
 
   double scrollSpeed;
+  int laneCount = 2;
+  bool shield = false;
+  double _magnetUntil = 0;
+  double _slowUntil = 0;
+  double _boosterCooldown = 7;
+  double _invulnerableUntil = 0;
+  double _dragDistance = 0;
+  int _dragLane = 0;
   double _spawnCooldown = 0.7;
   bool _finishSent = false;
   double? _outroRemaining;
@@ -108,6 +123,10 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
   GameResult? _pendingResult;
 
   bool get isDying => _pendingResult != null && !_clearOutro;
+
+  bool get magnetActive => session.elapsedSeconds < _magnetUntil;
+
+  bool get slowActive => session.elapsedSeconds < _slowUntil;
 
   static Difficulty _startingMode(Difficulty? picked, Stage? stage) {
     if (stage != null) {
@@ -139,9 +158,32 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     }
   }
 
-  double laneCenterX(Lane lane) {
-    final laneWidth = size.x / 2;
-    return lane == Lane.left ? laneWidth / 2 : laneWidth * 1.5;
+  double get laneWidth {
+    if (size.x < 1) {
+      return 1;
+    }
+    final visible = min(laneCount, 5);
+    return size.x / visible;
+  }
+
+  double get worldWidth => laneWidth * laneCount;
+
+  double laneCenterX(Lane lane) => (lane.index + 0.5) * laneWidth;
+
+  int nearestLane(double x) {
+    if (laneWidth <= 1) {
+      return 0;
+    }
+    return (x / laneWidth).floor().clamp(0, laneCount - 1);
+  }
+
+  String get _boonLabel {
+    final parts = <String>[
+      if (shield) 'Escudo',
+      if (magnetActive) 'Ímã',
+      if (slowActive) 'Lento',
+    ];
+    return parts.join(' · ');
   }
 
   @override
@@ -149,6 +191,7 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
 
   @override
   Future<void> onLoad() async {
+    laneCount = stage?.lanes ?? 2;
     camera.viewfinder.anchor = Anchor.topLeft;
     await world.add(LaneBackdrop());
     await world.add(player);
@@ -158,15 +201,7 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
   void update(double dt) {
     if (_outroRemaining != null) {
       _outroRemaining = _outroRemaining! - dt;
-      if (!_clearOutro) {
-        final shake = _outroRemaining!.clamp(0.0, 0.18) * 26;
-        camera.viewfinder.position = Vector2(
-          sin(_outroRemaining! * 72) * shake,
-          0,
-        );
-      }
       if (_outroRemaining! <= 0 && !_finishSent) {
-        camera.viewfinder.position = Vector2.zero();
         _finishSent = true;
         pauseEngine();
         onFinished?.call(_pendingResult!);
@@ -174,30 +209,86 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     } else if (session.status == GameStatus.playing &&
         size.x > 1 &&
         size.y > 1) {
-      scrollSpeed = difficulty.scrollSpeedAt(session.elapsedSeconds);
+      var speed = difficulty.scrollSpeedAt(session.elapsedSeconds);
+      if (slowActive) {
+        speed *= 0.55;
+      }
+      scrollSpeed = speed;
+      final nextLanes =
+          stage?.lanes ?? LaneGrowth.endlessAt(session.elapsedSeconds);
+      if (nextLanes != laneCount) {
+        laneCount = nextLanes;
+      }
       session.tick(dt);
       if (session.status != GameStatus.playing) {
         _openOutro();
       } else {
         _publishHud();
         _spawnCooldown -= dt;
+        _boosterCooldown -= dt;
         if (_spawnCooldown <= 0) {
           _trySpawn();
+        }
+        if (_boosterCooldown <= 0) {
+          _trySpawnBooster();
         }
       }
     }
     super.update(dt);
+    _frameCamera();
     if (_outroRemaining == null && session.status == GameStatus.cleared) {
       _openOutro();
     }
   }
 
+  void _frameCamera() {
+    if (size.x < 1) {
+      return;
+    }
+    final maxX = max(0.0, worldWidth - size.x);
+    var x = 0.0;
+    if (player.isMounted) {
+      x = (player.position.x - size.x / 2).clamp(0.0, maxX);
+    }
+    var shake = 0.0;
+    if (_outroRemaining != null && !_clearOutro) {
+      shake =
+          sin(_outroRemaining! * 72) * _outroRemaining!.clamp(0.0, 0.18) * 26;
+    }
+    camera.viewfinder.position = Vector2(x + shake, 0);
+  }
+
   @override
-  void onTapDown(TapDownEvent event) {
+  void onDragStart(DragStartEvent event) {
+    super.onDragStart(event);
     if (session.status != GameStatus.playing || !player.isMounted) {
       return;
     }
-    player.switchLane();
+    _dragDistance = 0;
+    _dragLane = player.target.index;
+  }
+
+  @override
+  void onDragUpdate(DragUpdateEvent event) {
+    if (session.status != GameStatus.playing || !player.isMounted) {
+      return;
+    }
+    _dragDistance += event.canvasDelta.x;
+    final step = max(42.0, laneWidth * 0.72);
+    final moved = (_dragDistance / step).round();
+    player.moveTo(Lane((_dragLane + moved).clamp(0, laneCount - 1)));
+  }
+
+  @override
+  void onDragEnd(DragEndEvent event) {
+    super.onDragEnd(event);
+    if (session.status != GameStatus.playing || !player.isMounted) {
+      return;
+    }
+    if (_dragDistance.abs() < 28 && event.velocity.x.abs() > 650) {
+      final dir = event.velocity.x > 0 ? 1 : -1;
+      player.moveTo(Lane((_dragLane + dir).clamp(0, laneCount - 1)));
+    }
   }
 
   void collectOrb(Vector2 at) {
@@ -211,14 +302,35 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     unawaited(AudioController.instance.playEffect('collect'));
   }
 
-  void collide() {
-    if (_pendingResult != null) {
+  void collide(ObstacleBlock block) {
+    if (_pendingResult != null || session.elapsedSeconds < _invulnerableUntil) {
+      return;
+    }
+    if (shield) {
+      shield = false;
+      _invulnerableUntil = session.elapsedSeconds + 0.45;
+      block.removeFromParent();
+      _publishHud();
+      unawaited(AudioController.instance.playEffect('ui'));
       return;
     }
     if (session.end() == null) {
       return;
     }
     _openOutro();
+  }
+
+  void grantBooster(BoosterKind kind) {
+    switch (kind) {
+      case BoosterKind.shield:
+        shield = true;
+      case BoosterKind.magnet:
+        _magnetUntil = session.elapsedSeconds + 6;
+      case BoosterKind.slow:
+        _slowUntil = session.elapsedSeconds + 4;
+    }
+    _publishHud();
+    unawaited(AudioController.instance.playEffect('collect'));
   }
 
   void _openOutro() {
@@ -251,33 +363,63 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
     final spacingSpeed = difficulty.scrollSpeedAt(
       session.elapsedSeconds + GameConfig.spawnLookAheadSeconds,
     );
-    final lane = spawnDirector.attempt(
+    final wave = spawnDirector.wave(
+      laneCount: laneCount,
       spawnY: spawnY,
       halfExtent: halfExtent,
       reactionDistance: GameConfig.reactionDistance(spacingSpeed),
       minSameLaneGap: GameConfig.minSameLaneGap,
       existing: existing,
     );
-    if (lane == null) {
+    if (wave.blocked.isEmpty) {
       _spawnCooldown = GameConfig.spawnRetrySeconds;
       return;
     }
 
-    world.add(ObstacleBlock(lane: lane, spawnY: spawnY, kind: setup.kind));
+    for (final lane in wave.blocked) {
+      world.add(ObstacleBlock(lane: lane, spawnY: spawnY, kind: setup.kind));
+      existing.add(
+        TrackedObstacle(lane: lane, centerY: spawnY, halfExtent: halfExtent),
+      );
+    }
     _spawnCooldown = difficulty.spawnIntervalAt(session.elapsedSeconds);
     _maybeSpawnOrb(
-      blockedLane: lane,
+      blockedLane: wave.blocked.first,
+      gap: wave.gap,
       spawnY: spawnY,
       halfExtent: halfExtent,
-      existing: [
-        ...existing,
-        TrackedObstacle(lane: lane, centerY: spawnY, halfExtent: halfExtent),
-      ],
+      existing: existing,
     );
+  }
+
+  void _trySpawnBooster() {
+    _boosterCooldown = 8;
+    if (_random.nextDouble() > 0.62) {
+      return;
+    }
+    final lane = spawnDirector.gap;
+    final spawnY = -GameConfig.obstacleHeight - 30;
+    final existing = world.children
+        .whereType<ObstacleBlock>()
+        .where((obstacle) => obstacle.isMounted)
+        .map((obstacle) => obstacle.tracked)
+        .toList();
+    final fits = spawnDirector.planner.canPlaceCollectible(
+      lane: lane,
+      centerY: spawnY,
+      radius: 16,
+      existing: existing,
+    );
+    if (!fits) {
+      return;
+    }
+    final kind = BoosterKind.values[_random.nextInt(BoosterKind.values.length)];
+    world.add(Booster(lane: lane, spawnY: spawnY, kind: kind));
   }
 
   void _maybeSpawnOrb({
     required Lane blockedLane,
+    required Lane gap,
     required double spawnY,
     required double halfExtent,
     required List<TrackedObstacle> existing,
@@ -305,7 +447,7 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
         return;
       }
     }
-    final lane = blockedLane.opposite;
+    final lane = laneCount <= 2 ? blockedLane.opposite : gap;
     final fits = spawnDirector.planner.canPlaceCollectible(
       lane: lane,
       centerY: spawnY,
@@ -343,6 +485,8 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
           ) ??
           0,
       twist: setup.hint,
+      lanes: laneCount,
+      boon: _boonLabel,
     );
     final previous = hud.value;
     if (previous.score == next.score &&
@@ -353,6 +497,8 @@ class ReflexoGame extends FlameGame with HasCollisionDetection, TapCallbacks {
         previous.goalLabel == next.goalLabel &&
         previous.goalDetail == next.goalDetail &&
         previous.twist == next.twist &&
+        previous.lanes == next.lanes &&
+        previous.boon == next.boon &&
         (previous.goalProgress - next.goalProgress).abs() < 0.01) {
       return;
     }

@@ -8,6 +8,7 @@ import 'package:reflexo/audio/audio_controller.dart';
 import 'package:reflexo/domain/ball_style.dart';
 import 'package:reflexo/domain/game_status.dart';
 import 'package:reflexo/domain/lane.dart';
+import 'package:reflexo/game/components/booster.dart';
 import 'package:reflexo/game/components/energy_orb.dart';
 import 'package:reflexo/game/components/obstacle_block.dart';
 import 'package:reflexo/game/config/game_config.dart';
@@ -17,12 +18,7 @@ import 'package:reflexo/game/trail/flame_trail.dart';
 class PlayerOrb extends PositionComponent
     with CollisionCallbacks, HasGameReference<ReflexoGame> {
   Lane lane = Lane.left;
-  Lane? _switchingTo;
-  double _switchElapsed = 0;
-  double _fromX = 0;
-  double _toX = 0;
-
-  bool get isSwitching => _switchingTo != null;
+  Lane target = Lane.left;
 
   final List<Vector2> _trail = List.generate(18, (_) => Vector2.zero());
   double _flameTime = 0;
@@ -54,36 +50,35 @@ class PlayerOrb extends PositionComponent
     _corePaint.color = style.core;
   }
 
-  void switchLane() {
-    if (isSwitching || game.session.status != GameStatus.playing) {
+  void moveTo(Lane next) {
+    if (game.session.status != GameStatus.playing) {
       return;
     }
-    final next = lane.opposite;
-    _switchingTo = next;
-    _switchElapsed = 0;
-    _fromX = position.x;
-    _toX = game.laneCenterX(next);
+    final count = game.laneCount;
+    final index = next.index.clamp(0, count - 1);
+    if (index == target.index) {
+      return;
+    }
+    target = Lane(index);
     unawaited(AudioController.instance.playEffect('switch'));
   }
 
   @override
   void update(double dt) {
     position.y = _playerY;
-    if (_switchingTo != null) {
-      _switchElapsed += dt;
-      final linear = (_switchElapsed / GameConfig.laneSwitchSeconds).clamp(
-        0.0,
-        1.0,
-      );
-      final t = linear * linear * (3 - 2 * linear);
-      position.x = _fromX + (_toX - _fromX) * t;
-      if (t >= 1) {
-        lane = _switchingTo!;
-        _switchingTo = null;
-        position.x = game.laneCenterX(lane);
-      }
+    final diameter = min(GameConfig.playerDiameter, game.laneWidth * 0.7);
+    if ((size.x - diameter).abs() > 0.5) {
+      size = Vector2.all(diameter);
+    }
+    final goal = game.laneCenterX(target);
+    final step = game.laneWidth / GameConfig.laneSwitchSeconds * dt;
+    final delta = goal - position.x;
+    if (delta.abs() <= step) {
+      position.x = goal;
+      lane = target;
     } else {
-      position.x = game.laneCenterX(lane);
+      position.x += step * delta.sign;
+      lane = Lane(game.nearestLane(position.x));
     }
     if (_pulse > 0) {
       _pulse = (_pulse - dt * 3.4).clamp(0.0, 1.0);
@@ -114,6 +109,16 @@ class PlayerOrb extends PositionComponent
     canvas.drawCircle(center, radius * 1.55, _glowPaint);
     canvas.drawCircle(center, radius * 0.95, _midPaint);
     canvas.drawCircle(center, radius * 0.5, _corePaint);
+    if (game.shield) {
+      canvas.drawCircle(
+        center,
+        radius * 1.25,
+        Paint()
+          ..color = const Color(0xFF8AF0FF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.4,
+      );
+    }
     if (game.isDying) {
       final crack = Paint()
         ..color = GameConfig.obstacle
@@ -139,7 +144,13 @@ class PlayerOrb extends PositionComponent
   ) {
     super.onCollisionStart(intersectionPoints, other);
     if (other is ObstacleBlock) {
-      game.collide();
+      game.collide(other);
+      return;
+    }
+    if (other is Booster && !other.taken) {
+      other.taken = true;
+      game.grantBooster(other.kind);
+      other.removeFromParent();
       return;
     }
     if (other is EnergyOrb && !other.collected) {
